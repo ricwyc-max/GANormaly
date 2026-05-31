@@ -7,3 +7,5 @@ data/mvtec_anomaly_detection.tar.xz
 /.idea
 __pycache__/
 *.pyc
+*.pyc
+*.pptx
