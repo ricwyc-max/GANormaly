@@ -65,7 +65,7 @@ ckpt_dir = './ckpt'
 os.makedirs(sample_dir, exist_ok=True)
 os.makedirs(ckpt_dir, exist_ok=True)
 
-Width_Multiplier = 0.5 #宽度乘子（）
+Width_Multiplier = 0.25 #宽度乘子（）
 Resolution_Multiplier = 0.25 #分辨率乘子（加载数据用）
 
 
@@ -496,13 +496,17 @@ class D_MLP(nn.Module):
         )
         #激活函数
         self.leaky_relu = nn.LeakyReLU(0.2)
+        self.dropout = nn.Dropout2d(0.4)  # Dropout弱化判别器
         self.Linear = nn.Linear(latent_size,1)
         self.activate = nn.Sigmoid()
 
     def forward(self, x):
         x = self.conv_first(x)
+        x = self.leaky_relu(x)
         x = self.conv_1a(x)
+        x = self.leaky_relu(x)
         x = self.conv_1b(x)
+        x = self.dropout(x)
 
         x = self.GAP(x)# [batch, 512, 1, 1]
 
@@ -1056,7 +1060,7 @@ for epoch in range(num_epoch):
         #定义图像是真或假的标签
         batch = images.size(0)  # 实际批次大小
         # 获取平滑标签
-        real_labels, fake_labels = get_labels(batch, smooth=False)
+        real_labels, fake_labels = get_labels(batch, smooth=True)
         #====================================================
         #                   训练判别器
         #====================================================
