@@ -155,36 +155,30 @@ class D_MLP(nn.Module):
         self.conv_first = addBlock.DWConv2d(in_channels=input_channel,out_channels=512,kernel_size=3,stride=1,padding=1,bias=True,Width_Multiplier=Width_Multiplier,firstBlock=True)
         self.GAP = nn.AdaptiveAvgPool2d(1)
         self.conv_1a = addBlock.DWConv2d(in_channels=512,out_channels=512,kernel_size=3,stride=1,padding=1,bias=True,Width_Multiplier=Width_Multiplier)
-        self.conv_1b = addBlock.DWConv2d(in_channels=512,out_channels=512,kernel_size=3,stride=1,padding=1,bias=True,Width_Multiplier=Width_Multiplier)
-        #MLP线性运算
+        #MLP线性运算（精简为2层）
         self.in_channel = int(512*Width_Multiplier)
         self.mlp = nn.Sequential(
             nn.Linear(self.in_channel, latent_size),
             nn.LeakyReLU(0.2),
             nn.Linear(latent_size, latent_size),
             nn.LeakyReLU(0.2),
-            nn.Linear(latent_size, latent_size),
-            nn.LeakyReLU(0.2),
-            nn.Linear(latent_size, latent_size),
-            nn.LeakyReLU(0.2),
-            nn.Linear(latent_size, latent_size),
-            nn.LeakyReLU(0.2),
         )
         #激活函数
         self.leaky_relu = nn.LeakyReLU(0.2)
+        self.dropout = nn.Dropout2d(0.4)
         self.Linear = nn.Linear(latent_size,1)
         self.activate = nn.Sigmoid()
 
     def forward(self, x):
         x = self.conv_first(x)
+        x = self.leaky_relu(x)
         x = self.conv_1a(x)
-        x = self.conv_1b(x)
+        x = self.dropout(x)
 
         x = self.GAP(x)# [batch, 512, 1, 1]
 
         # 展平
         x = x.view(x.size(0), -1)  # [batch, 512]
-
 
         # MLP 处理（用于做z与z^的对比）
         z = self.mlp(x)  # [batch, latent_size]

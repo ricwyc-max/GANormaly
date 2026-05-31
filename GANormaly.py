@@ -43,7 +43,7 @@ beta1 = 0.5
 beta2 = 0.999
 num_epoch = 50
 
-batch_size = 8
+batch_size = 2
 latent_size = 100
 
 image_width = 1024
@@ -66,7 +66,7 @@ os.makedirs(sample_dir, exist_ok=True)
 os.makedirs(ckpt_dir, exist_ok=True)
 
 Width_Multiplier = 0.25 #宽度乘子（）
-Resolution_Multiplier = 0.25 #分辨率乘子（加载数据用）
+Resolution_Multiplier = 0.5 #分辨率乘子（加载数据用）
 
 
 #============================================================================
@@ -479,17 +479,10 @@ class D_MLP(nn.Module):
         self.conv_first = addBlock.DWConv2d(in_channels=input_channel,out_channels=512,kernel_size=3,stride=1,padding=1,bias=True,Width_Multiplier=Width_Multiplier,firstBlock=True)
         self.GAP = nn.AdaptiveAvgPool2d(1)
         self.conv_1a = addBlock.DWConv2d(in_channels=512,out_channels=512,kernel_size=3,stride=1,padding=1,bias=True,Width_Multiplier=Width_Multiplier)
-        self.conv_1b = addBlock.DWConv2d(in_channels=512,out_channels=512,kernel_size=3,stride=1,padding=1,bias=True,Width_Multiplier=Width_Multiplier)
-        #MLP线性运算
+        #MLP线性运算（精简为2层）
         self.in_channel = int(512*Width_Multiplier)
         self.mlp = nn.Sequential(
             nn.Linear(self.in_channel, latent_size),
-            nn.LeakyReLU(0.2),
-            nn.Linear(latent_size, latent_size),
-            nn.LeakyReLU(0.2),
-            nn.Linear(latent_size, latent_size),
-            nn.LeakyReLU(0.2),
-            nn.Linear(latent_size, latent_size),
             nn.LeakyReLU(0.2),
             nn.Linear(latent_size, latent_size),
             nn.LeakyReLU(0.2),
@@ -504,8 +497,6 @@ class D_MLP(nn.Module):
         x = self.conv_first(x)
         x = self.leaky_relu(x)
         x = self.conv_1a(x)
-        x = self.leaky_relu(x)
-        x = self.conv_1b(x)
         x = self.dropout(x)
 
         x = self.GAP(x)# [batch, 512, 1, 1]

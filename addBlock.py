@@ -334,7 +334,7 @@ class DWConv2d(nn.Module):
         self.bias = bias
         self.firstBlock = firstBlock
         self.endBlock = endBlock
-        self.use_residual = (in_channels == out_channels and stride == 1)
+        self.use_residual = (self.in_channels_change == self.out_channels_change and stride == 1)
 
 
         #定义卷积
