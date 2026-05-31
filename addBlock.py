@@ -307,7 +307,7 @@ class DWConv2d(nn.Module):
     """
     def __init__(self, in_channels,out_channels,kernel_size=3,stride=1,padding=1,bias=True,Width_Multiplier=1,firstBlock=False,endBlock=False):
         """
-        深度可分离卷积参数
+        深度可分离卷积参数（添加残差连接）
         :param in_channels:输入通道数
         :param out_channels:输出通道数
         :param kernel_size:卷积核尺寸
@@ -334,6 +334,8 @@ class DWConv2d(nn.Module):
         self.bias = bias
         self.firstBlock = firstBlock
         self.endBlock = endBlock
+        self.use_residual = (in_channels == out_channels and stride == 1)
+
 
         #定义卷积
         if self.firstBlock == True:#如果是第一层，输入不进行缩放，输出缩放（因为输入缩放会导致和原始数据通道不匹配）
@@ -341,21 +343,28 @@ class DWConv2d(nn.Module):
                                    stride=self.stride, padding=self.padding, bias=self.bias,groups=self.in_channels)
             self.Pointwise_Conv = nn.Conv2d(self.in_channels, self.out_channels_change, kernel_size = 1,
                                    stride=1, padding=0, bias=self.bias)
+            self.bn = nn.BatchNorm2d(self.out_channels_change)
         elif self.endBlock == True:#如果是最后一层，输出不进行缩放，输入缩放（因为输出缩放会导致和原始数据通道不匹配）
             self.Depthwise_Conv = nn.Conv2d(self.in_channels_change, self.in_channels_change, kernel_size = self.kernel_size,
                                    stride=self.stride, padding=self.padding, bias=self.bias,groups=self.in_channels_change)
             self.Pointwise_Conv = nn.Conv2d(self.in_channels_change, self.out_channels, kernel_size = 1,
                                    stride=1, padding=0, bias=self.bias)
+            self.bn = nn.BatchNorm2d(self.out_channels)
         else:#如果不是第一层，那就输入输出都缩放
             self.Depthwise_Conv = nn.Conv2d(self.in_channels_change, self.in_channels_change, kernel_size = self.kernel_size,
                                    stride=self.stride, padding=self.padding, bias=self.bias,groups=self.in_channels_change)
             self.Pointwise_Conv = nn.Conv2d(self.in_channels_change, self.out_channels_change, kernel_size = 1,
                                    stride=1, padding=0, bias=self.bias)
+            self.bn = nn.BatchNorm2d(self.out_channels_change)
 
 
     def forward(self,x):
+        identity = x
         x = self.Depthwise_Conv(x)
         x = self.Pointwise_Conv(x)
+        x = self.bn(x)
+        if self.use_residual:
+            x = x + identity
         return x
 
 
@@ -445,6 +454,7 @@ class DWConvTranspose2d(nn.Module):
                 padding=0,                      # 不填充
                 bias=self.bias                  # 是否使用偏置
             )
+            self.bn = nn.BatchNorm2d(self.out_channels_change)
 
         elif self.endBlock == True:
             # 情况2：最后一层（输出层）
@@ -477,6 +487,7 @@ class DWConvTranspose2d(nn.Module):
                 padding=0,                      # 不填充
                 bias=self.bias                  # 是否使用偏置
             )
+            self.bn = nn.BatchNorm2d(self.out_channels)
 
         else:
             # 情况3：中间层
@@ -508,6 +519,7 @@ class DWConvTranspose2d(nn.Module):
                 padding=0,                      # 不填充
                 bias=self.bias                  # 是否使用偏置
             )
+            self.bn = nn.BatchNorm2d(self.out_channels_change)
 
     def forward(self, x):
         """
@@ -522,6 +534,7 @@ class DWConvTranspose2d(nn.Module):
         # 第二步：Pointwise卷积（通道混合）
         # 使用1x1卷积混合通道信息并调整通道数
         x = self.Pointwise_Conv(x)
+        x = self.bn(x)
 
         return x
 

@@ -1,0 +1,9 @@
+data/mvtec_anomaly_detection.tar.xz
+*.png
+*.txt
+*.gz
+/data
+*.ckpt
+/.idea
+__pycache__/
+*.pyc
