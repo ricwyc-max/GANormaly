@@ -8,33 +8,25 @@ GANormaly基于生成对抗网络的无缺陷样本的缺陷（异常）检测�
 #=================================导包=======================================
 import numpy as np
 import time
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import torch
 from torch import nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader,random_split
-from torchvision import datasets
-from torchvision import transforms
+from torch.utils.data import DataLoader, Subset, random_split
+from torchvision import datasets, transforms
+from torchvision.utils import save_image
+from torchvision.datasets import ImageFolder
 import matplotlib.pyplot as plt
-import pandas as pd
 import netron
+import torch.onnx
 from collections import OrderedDict
 import os
-from torchvision.utils import save_image
+import gc
 import addBlock
 from torchsummary import summary
 from torchinfo import summary as sumy
 from torchviz import make_dot
-import netron
-import torch.onnx
-import torch
-from torch.utils.data import DataLoader, Subset, random_split
-from torchvision import datasets, transforms
-import numpy as np
-import gc
-from torchvision.datasets import ImageFolder
 import lpips
 
 # =================================设置超参数=================================
@@ -374,7 +366,7 @@ def check_data_distribution(loader, name):
     unique, counts = np.unique(labels, return_counts=True)
     print(f"\n{name} 类别分布:")
     for label, count in zip(unique, counts):
-        print(f"  {label} ({fashion_classes[label]}): {count} 张")
+        print(f"  类别 {label}: {count} 张")
 
 # 注意：验证集和训练集都是 Subset，需要重新包装才能查看标签分布
 # 这里简单打印一下数据集大小
@@ -521,7 +513,7 @@ class D_MLP(nn.Module):
         # MLP 处理（用于做z与z^的对比）
         z = self.mlp(x)  # [batch, latent_size]
 
-        x = self.Linear(x)#映射到[batch, 1]供sigmoid输出唯一概率
+        x = self.Linear(z)#映射到[batch, 1]供sigmoid输出唯一概率
 
         result = self.activate(x)#二分类SIGMOID判断真假图片
 
@@ -1054,6 +1046,7 @@ def get_labels(batch_size, smooth=True):
 # 在每个 epoch 结束时记录平均损失
 D_loss_epoch = []
 G_loss_epoch = []
+anti_collapse = AntiCollapseLoss(target_std=1.0)#编码多样性损失（提到循环外，避免重复创建）
 #=================================================================
 for epoch in range(num_epoch):
     epoch_d_loss = 0
@@ -1128,7 +1121,6 @@ for epoch in range(num_epoch):
 
         #计算总损失
         #在总损失中加入
-        anti_collapse = AntiCollapseLoss(target_std=1.0)#编码多样性损失
         L_anti = anti_collapse(z)
         g_loss = w_adv*L_adv+w_con*L_con+w_lpips*L_lpips+w_enc*L_enc+ w_anti*L_anti
         epoch_g_loss += g_loss.item()
