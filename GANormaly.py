@@ -35,6 +35,7 @@ from torchvision import datasets, transforms
 import numpy as np
 import gc
 from torchvision.datasets import ImageFolder
+import lpips
 
 # =================================设置超参数=================================
 # 清除显存缓存
@@ -50,7 +51,7 @@ beta1 = 0.5
 beta2 = 0.999
 num_epoch = 50
 
-batch_size = 16
+batch_size = 8
 latent_size = 100
 
 image_width = 1024
@@ -59,9 +60,10 @@ image_height = 1024
 input_channel = 3#RGB3通道图还是1通道灰度图
 
 w_adv =1    #对抗损失权重
-w_con =50   #语义损失权重
+w_con =10   #语义损失权重
 w_enc =1    #编码损失权重
 w_anti = 0 #多样性编码损失（防止编码空间坍缩）
+w_lpips = 20 #LPIPS感知损失权重
 
 w_D = 1 #判别器损失权重
 
@@ -72,7 +74,7 @@ os.makedirs(sample_dir, exist_ok=True)
 os.makedirs(ckpt_dir, exist_ok=True)
 
 Width_Multiplier = 0.5 #宽度乘子（）
-Resolution_Multiplier = 0.125 #分辨率乘子（加载数据用）
+Resolution_Multiplier = 0.25 #分辨率乘子（加载数据用）
 
 
 #============================================================================
@@ -936,6 +938,9 @@ G_Encoder = G_E().to(device)
 G_Decoder = G_D().to(device)
 add_Encoder = E().to(device)
 
+#初始化LPIPS感知损失模型
+lpips_model = lpips.LPIPS(net='alex').to(device)
+lpips_model.eval()  # LPIPS网络本身不需要训练
 
 #定义判别器的损失函数交叉熵及优化器
 criterion = nn.BCELoss()
@@ -1114,6 +1119,8 @@ for epoch in range(num_epoch):
         #===================2、获得语义损失（原图和假图的L1距离）==========================
         #计算两张假图之间的L1距离
         L_con = torch.mean(torch.abs(images - fake_images))
+        #===================2.1、获得LPIPS感知损失（基于深度特征的感知距离）==========================
+        L_lpips = lpips_model(images, fake_images).mean()
         #===================3、获得编码损失（原图在G中编码和假图在E中编码向量的L2距离）==========================
         z_e = add_Encoder(fake_images)
         L_enc = torch.norm(z - z_e, p=2)#计算欧式距离
@@ -1123,7 +1130,7 @@ for epoch in range(num_epoch):
         #在总损失中加入
         anti_collapse = AntiCollapseLoss(target_std=1.0)#编码多样性损失
         L_anti = anti_collapse(z)
-        g_loss = w_adv*L_adv+w_con*L_con+w_enc*L_enc+ w_anti*L_anti
+        g_loss = w_adv*L_adv+w_con*L_con+w_lpips*L_lpips+w_enc*L_enc+ w_anti*L_anti
         epoch_g_loss += g_loss.item()
         #对生成器、判别器的梯度清零
         reset_grad()#梯度清零
@@ -1154,10 +1161,10 @@ for epoch in range(num_epoch):
 
         #打印训练信息
         if (i+1)%2 == 0:
-            print('Epoch[{}/{}],step[{}/{}],d_loss:{:.4f},g_loss:{:.4f},D(x):{:.2f},D(G(z)):{:.2f},L_adv(对抗损失):{:2f},L_con(语义损失):{:2f},L_enc(编码损失):{:2f},L_anti(多样性损失):{:2f}'
+            print('Epoch[{}/{}],step[{}/{}],d_loss:{:.4f},g_loss:{:.4f},D(x):{:.2f},D(G(z)):{:.2f},L_adv:{:2f},L_con:{:2f},L_lpips:{:2f},L_enc:{:2f},L_anti:{:2f}'
                   .format(epoch+1,num_epoch,i+1,total_step,d_loss.item(),g_loss.item(),
                           real_score.mean().item(),fake_score.mean().item(),
-                          L_adv.item(),L_con.item(),L_enc.item(),L_anti.item()))
+                          L_adv.item(),L_con.item(),L_lpips.item(),L_enc.item(),L_anti.item()))
 
     # #保存图片
     # if (epoch+1)%10 == 0:
