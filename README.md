@@ -14,6 +14,7 @@
 - [超参数说明](#超参数说明)
 - [训练细节](#训练细节)
 - [评估指标](#评估指标)
+- [实验结果](#实验结果)
 - [自定义网络块说明](#自定义网络块说明)
 - [参考文献](#参考文献)
 
@@ -230,6 +231,7 @@ GANormaly/
 │   ├── G_Encoder_{epoch}.ckpt
 │   ├── G_Decoder_{epoch}.ckpt
 │   └── add_Encoder_{epoch}.ckpt
+├── pstimg(no LPIPS)/     # 无LPIPS基线实验结果（网络结构、重建图、评估指标）
 ├── samples1/             # 训练过程中生成的重建图像
 │   ├── real_image-{epoch}.png
 │   └── fake_image-{epoch}.png
@@ -395,6 +397,32 @@ AUC评估等级：
 - AUC >= 0.8：良好 (Good)
 - AUC >= 0.7：一般 (Fair)
 - AUC < 0.7：较差 (Poor)
+
+## 实验结果
+
+### 网络结构
+
+![网络结构](pstimg(no%20LPIPS)/network.png)
+
+### 无 LPIPS 损失的基线结果
+
+以下为不使用 LPIPS 感知损失时的实验结果（仅使用 L1 重建损失）：
+
+**原图 vs 重建图：**
+
+| 原图 | 重建图（无LPIPS） |
+|:----:|:----:|
+| ![原图](pstimg(no%20LPIPS)/ori.png) | ![重建图](pstimg(no%20LPIPS)/fake.png) |
+
+**评估指标：**
+
+| 指标 | 结果图 |
+|------|--------|
+| 编码距离分布 | ![编码距离分布](pstimg(no%20LPIPS)/encoding_distance_histogram.png) |
+| ROC 曲线 | ![ROC曲线](pstimg(no%20LPIPS)/roc_curve.png) |
+| 阈值性能分析 | ![阈值性能](pstimg(no%20LPIPS)/threshold_performance.png) |
+
+> 无 LPIPS 时，重建图像存在明显模糊，高频细节（纹理、边缘）丢失严重，导致异常检测精度受限。加入 LPIPS 感知损失后，重建质量显著提升，正常/异常样本的编码距离分离度更大。
 
 ## 自定义网络块说明
 

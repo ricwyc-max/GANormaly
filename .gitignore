@@ -1,5 +1,6 @@
 data/mvtec_anomaly_detection.tar.xz
 *.png
+!pstimg(no LPIPS)/*.png
 *.txt
 *.gz
 /data
