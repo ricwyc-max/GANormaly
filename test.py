@@ -52,8 +52,8 @@ latent_size = 100
 input_channel = 3
 image_width = 1024
 image_height = 1024
-Width_Multiplier = 0.5 #宽度乘子（）
-Resolution_Multiplier = 0.125 #分辨率乘子（加载数据用）
+Width_Multiplier = 0.25 #宽度乘子（必须与训练时一致）
+Resolution_Multiplier = 0.5 #分辨率乘子（必须与训练时一致）
 batch_size = 16
 # =================================导入网络结构=================================
 #============================================================================
